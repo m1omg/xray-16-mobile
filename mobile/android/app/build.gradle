@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.xraymobile.soc'
+    compileSdk 36
+    ndkVersion '30.0.16248370'
+
+    defaultConfig {
+        applicationId 'org.xraymobile.soc'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.1-dev'
+    }
+
+    buildTypes {
+        debug {
+            // Engine .so files are prebuilt by scripts/build-engine-android.sh; keep their symbols.
+            packaging.jniLibs.keepDebugSymbols += ['**/*.so']
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug // personal sideload build
+        }
+    }
+
+    sourceSets {
+        main {
+            // Filled by scripts/package-android.sh: jniLibs/<abi>/*.so
+            jniLibs.srcDirs = ['jniLibs']
+            // Engine resources unpacked into the game dir on install (GL shaders, fsgame.ltx)
+            assets.srcDirs = ['engineAssets']
+        }
+    }
+
+    androidResources {
+        // The default pattern drops names starting with '.' or dirs starting with '_',
+        // which would lose shader files such as gl/.s
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
