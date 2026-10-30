@@ -210,7 +210,11 @@ void xrDebug::GatherInfo(char* assertionInfo, size_t bufferSize, const ErrorLoca
     }
 
     FlushLog();
+#ifndef XR_PLATFORM_ANDROID
+    // On Android this goes through JNI from whatever thread failed, which can crash
+    // inside the handler and hide the original error; logcat has the text anyway.
     os_clipboard::copy_to_clipboard(assertionInfo);
+#endif
 }
 
 void xrDebug::Fatal(const ErrorLocation& loc, const char* format, ...)

@@ -261,8 +261,10 @@ void xrCore::Initialize(pcstr _ApplicationName, pcstr commandLine, bool init_fs,
         struct passwd *pw = getpwuid(uid);
         if (pw)
         {
-            strncpy(UserName, pw->pw_gecos, sizeof(UserName) - 1);
-            if (UserName[0] == '\0')
+            // Bionic (Android) leaves pw_gecos NULL, and so may other libcs
+            if (pw->pw_gecos)
+                strncpy(UserName, pw->pw_gecos, sizeof(UserName) - 1);
+            if (UserName[0] == '\0' && pw->pw_name)
                 strncpy(UserName, pw->pw_name, sizeof(UserName) - 1);
         }
         else
@@ -410,8 +412,10 @@ void SDLLogOutput(void* /*userdata*/, int category, SDL_LogPriority priority, co
     default:                            mark = ' '; type = "unknown"; break;
     }
 
-    static constexpr pcstr format = "%c [sdl][%s][%s]: %s";
-    const size_t size = sizeof(mark) + sizeof(from) + sizeof(type) + sizeof(format) + sizeof(message);
+    static constexpr char format[] = "%c [sdl][%s][%s]: %s";
+    // sizeof() of the pointers here would give a fixed ~33 bytes and overflow the stack
+    // on any longer SDL message; size the buffer from the actual strings instead.
+    const size_t size = sizeof(mark) + xr_strlen(from) + xr_strlen(type) + sizeof(format) + xr_strlen(message);
     pstr buf = (pstr)xr_alloca(size);
 
     xr_sprintf(buf, size, format, mark, from, type, message);

@@ -237,14 +237,17 @@ void GetPlayerName_FromRegistry(char* name, u32 const name_size)
 #elif defined(XR_PLATFORM_POSIX)
     uid_t uid = geteuid();
     struct passwd* pw = getpwuid(uid);
+    name[0] = 0;
     if (pw)
     {
-        strcpy(name, pw->pw_gecos);
+        // Bionic (Android) leaves pw_gecos NULL, and so may other libcs
+        if (pw->pw_gecos)
+            xr_strcpy(name, name_size, pw->pw_gecos);
         char* pos = strchr(name, ','); // pw_gecos return string
         if (NULL != pos)
             *pos = 0;
-        if (0 == name[0])
-            strcpy(name, pw->pw_name);
+        if (0 == name[0] && pw->pw_name)
+            xr_strcpy(name, name_size, pw->pw_name);
     }
 #else
 #   error Select or add implementation for your platform
