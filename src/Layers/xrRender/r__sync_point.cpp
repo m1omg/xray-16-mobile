@@ -17,7 +17,7 @@ bool R_sync_point::Wait(u32 /*wait_sleep*/, u64 timeout)
     ZoneScoped;
     CHK_GL(q_sync_point[q_sync_count] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
 
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     return true; // WebGL cannot block on a fence; End() still deletes it
 #endif
 

@@ -99,7 +99,7 @@ R_occlusion::occq_result R_occlusion::occq_get(u32& ID)
     CTimer T;
     T.Start();
     RImplementation.BasicStats.Wait.Begin();
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     if ((hr = GetData(used[ID].Q, &fragments, sizeof(fragments))) == S_FALSE)
         fragments = (occq_result)-1;
 #else

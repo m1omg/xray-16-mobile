@@ -63,21 +63,24 @@ public:
 
 #ifdef XR_PLATFORM_WEB
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_webgl{};
+#endif
+#ifdef XR_GLES
     bool BaseVertexDrawSupported{};
+    bool S3TCSupported{}; // DXT1/3/5 sampling; Mali GPUs and some iOS devices lack it
 #endif
 
     pcstr AdapterName;
     pcstr OpenGLVersionString;
     pcstr ShadingVersion;
     bool ComputeShadersSupported;
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     u32 TextureUploadUnit{};
 #endif
 };
 
 struct texture_upload_unit
 {
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     const GLenum target;
     explicit texture_upload_unit(GLenum target);
     ~texture_upload_unit();

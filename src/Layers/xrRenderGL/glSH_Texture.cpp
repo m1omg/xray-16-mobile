@@ -94,7 +94,7 @@ void CTexture::apply_theora(CBackend& cmd_list, u32 dwStage)
         u32 _w = pTheora->Width(true);
         u32 _h = pTheora->Height(true);
 
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
         xr_vector<u32> frame(_w * _h);
         int framePos = 0;
         pTheora->DecompressFrame(frame.data(), 0, framePos);
@@ -229,7 +229,12 @@ void CTexture::Load()
             glBindTexture(GL_TEXTURE_2D, pTexture);
             CHK_GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0));
             CHK_GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0));
+#ifdef XR_GLES
+            // GLES only pairs GL_RGBA8 with GL_RGBA; apply_theora() swizzles frames to match
+            CHK_GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, _w, _h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+#else
             CHK_GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, _w, _h, 0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr));
+#endif
 
             pSurface = pTexture;
             desc = GL_TEXTURE_2D;
@@ -369,7 +374,7 @@ void CTexture::desc_update()
     desc_cache = pSurface;
     if (pSurface && (GL_TEXTURE_2D == desc || GL_TEXTURE_2D_MULTISAMPLE == desc))
     {
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
         m_width = m_loaded_width;
         m_height = m_loaded_height;
 #else

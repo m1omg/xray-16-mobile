@@ -56,7 +56,7 @@ IC void CBackend::ClearRT(GLuint rt, const Fcolor& color)
     CHK_GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt, 0));
 
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     colorwrite_mask = u32(-1);
 #endif
     glClearColor(color.r, color.g, color.b, color.a);
@@ -71,7 +71,7 @@ IC void CBackend::ClearZB(GLuint zb, float depth)
     CHK_GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, zb, 0));
 
     glDepthMask(GL_TRUE);
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     depth_write_mask = TRUE;
 #endif
     glClearDepthf(depth);
@@ -89,7 +89,7 @@ IC void CBackend::ClearZB(GLuint zb, float depth, u8 stencil)
     glClearDepthf(depth);
 
     glStencilMask(~0);
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     depth_write_mask = TRUE;
     stencil_writemask = u32(~0);
 #endif
@@ -116,7 +116,7 @@ IC bool CBackend::ClearRTRect(GLuint rt, const Fcolor& color, size_t numRects, c
 
         // Clear the color buffer without affecting the global state
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
         colorwrite_mask = u32(-1);
 #endif
         glClearColor(color.r, color.g, color.b, color.a);
@@ -146,7 +146,7 @@ IC bool CBackend::ClearZBRect(GLuint zb, float depth, size_t numRects, const Ire
         CHK_GL(glScissor(rects->left, bottom, rects->width(), rects->height()));
 
         glDepthMask(GL_TRUE);
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
         depth_write_mask = TRUE;
 #endif
         glClearDepthf(depth);
@@ -159,7 +159,7 @@ IC bool CBackend::ClearZBRect(GLuint zb, float depth, size_t numRects, const Ire
     return true;
 }
 
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
 inline SDeclaration* g_boundDeclaration = nullptr;
 inline GLuint g_boundVertexArray = 0;
 
@@ -181,7 +181,7 @@ ICF void CBackend::set_Format(SDeclaration* _decl)
 		stat.decl++;
 #endif
         decl = _decl;
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
         BindVertexArray(_decl->dcl);
         g_boundDeclaration = _decl;
         vb = 0;
@@ -289,7 +289,7 @@ ICF void CBackend::set_Vertices(GLuint _vb, u32 _vb_stride)
         }
         else
         {
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
             if (g_boundDeclaration)
             {
                 g_boundDeclaration->bound_vb = vb;
@@ -312,7 +312,7 @@ ICF void CBackend::set_Indices(GLuint _ib)
 		stat.ib++;
 #endif
         ib = _ib;
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
         if (g_boundDeclaration)
             g_boundDeclaration->bound_ib = ib;
 #else
@@ -365,9 +365,11 @@ IC u32 GetIndexCount(D3DPRIMITIVETYPE T, u32 iPrimitiveCount)
     }
 }
 
+#ifdef XR_GLES
 #ifdef XR_PLATFORM_WEB
 extern "C" void glDrawElementsInstancedBaseVertexBaseInstanceWEBGL(
     GLenum, GLsizei, GLenum, const void*, GLsizei, GLint, GLuint);
+#endif
 
 ICF void CBackend::SetBaseVertex(u32 baseV)
 {
@@ -401,8 +403,13 @@ ICF void CBackend::DrawIndexedBaseVertex(GLenum topology, u32 indexCount, u32 st
     if (HW.BaseVertexDrawSupported)
     {
         SetBaseVertex(0);
+#ifdef XR_PLATFORM_WEB
         glDrawElementsInstancedBaseVertexBaseInstanceWEBGL(
             topology, indexCount, GL_UNSIGNED_SHORT, indices, 1, baseV, 0);
+#else
+        // Core in GLES 3.2; glad aliases EXT/OES_draw_elements_base_vertex on older drivers.
+        CHK_GL(glDrawElementsBaseVertex(topology, indexCount, GL_UNSIGNED_SHORT, indices, baseV));
+#endif
         return;
     }
     SetBaseVertex(baseV);
@@ -419,7 +426,7 @@ ICF void CBackend::Render(D3DPRIMITIVETYPE T, u32 baseV, u32 startV, u32 countV,
     stat.render.verts += countV;
     stat.render.polys += PC;
     constants.flush();
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     DrawIndexedBaseVertex(Topology, iIndexCount, startI, baseV);
 #else
     CHK_GL(glDrawElementsBaseVertex(Topology, iIndexCount, GL_UNSIGNED_SHORT, (void*)(startI * sizeof(GLushort)), baseV));
@@ -436,7 +443,7 @@ ICF void CBackend::Render(D3DPRIMITIVETYPE T, u32 startV, u32 PC)
     stat.render.verts += iIndexCount;
     stat.render.polys += PC;
     constants.flush();
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     SetBaseVertex(0);
 #endif
     CHK_GL(glDrawArrays(Topology, startV, iIndexCount));
@@ -479,7 +486,7 @@ IC void CBackend::SetViewport(const D3D_VIEWPORT& viewport) const
 IC void CBackend::set_Stencil(u32 _enable, u32 _func, u32 _ref, u32 _mask, u32 _writemask, u32 _fail, u32 _pass,
                               u32 _zfail)
 {
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     if (stencil_enable != _enable)
     {
         stencil_enable = _enable;
@@ -553,7 +560,7 @@ IC void CBackend::set_ZFunc(u32 _func)
     }
 }
 
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
 IC void CBackend::set_DepthWrite(u32 _enable)
 {
     if (depth_write_mask == _enable)
@@ -632,7 +639,7 @@ ICF void CBackend::set_FillMode(u32 _mode)
     if (fill_mode != _mode)
     {
         fill_mode = _mode;
-#ifndef XR_PLATFORM_WEB // wireframe is a debug feature; GLES has no glPolygonMode
+#ifndef XR_GLES // wireframe is a debug feature; GLES has no glPolygonMode
         glPolygonMode(GL_FRONT_AND_BACK, glStateUtils::ConvertFillMode(_mode));
 #endif
     }
@@ -695,7 +702,7 @@ void CBackend::set_pass_targets(const ref_rt& _1, const ref_rt& _2, const ref_rt
     set_RT(_3 ? _3->pRT : 0, 2);
     set_ZB(zb ? zb->pZRT : 0);
 
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     VERIFY(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 #else
     [[maybe_unused]] GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);

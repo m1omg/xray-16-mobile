@@ -31,15 +31,27 @@
 #       define _XRAY_PLATFORM_MARKER "*BSD"
 #   endif
 #elif defined(__APPLE__)
+#   include <TargetConditionals.h>
 #   define XR_PLATFORM_APPLE
 #   define XR_PLATFORM_POSIX
-#   define _XRAY_PLATFORM_MARKER "Apple"
+#   if TARGET_OS_IPHONE
+#       define XR_PLATFORM_IOS
+#       define _XRAY_PLATFORM_MARKER "iOS"
+#   else
+#       define _XRAY_PLATFORM_MARKER "Apple"
+#   endif
 #elif defined(__HAIKU__)
 #   define XR_PLATFORM_HAIKU
 #   define XR_PLATFORM_POSIX
 #   define _XRAY_PLATFORM_MARKER "Haiku"
 #else
 #   error Unsupported platform
+#endif
+
+// Platforms where the GL renderer runs on an OpenGL ES 3.x context
+// (WebGL2 is GLES 3.0) instead of desktop GL 4.x.
+#if defined(XR_PLATFORM_WEB) || defined(XR_PLATFORM_ANDROID) || defined(XR_PLATFORM_IOS)
+#   define XR_GLES
 #endif
 
 #if defined(_M_IX86) || defined(__i386__) || defined(_X86_)

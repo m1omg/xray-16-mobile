@@ -8,6 +8,40 @@
 
 namespace xray::render::RENDER_NAMESPACE
 {
+#ifdef XR_GLES
+// GPUs without S3TC (Mali, some iOS devices) can't sample the game's DXT textures,
+// so they get decoded to RGBA8. That costs 4-8x the memory of the compressed data,
+// which makes it a correctness fallback rather than the way to ship textures.
+static bool is_dxt(gli::format format)
+{
+    switch (format)
+    {
+    case gli::FORMAT_RGB_DXT1_UNORM_BLOCK8:
+    case gli::FORMAT_RGB_DXT1_SRGB_BLOCK8:
+    case gli::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
+    case gli::FORMAT_RGBA_DXT1_SRGB_BLOCK8:
+    case gli::FORMAT_RGBA_DXT3_UNORM_BLOCK16:
+    case gli::FORMAT_RGBA_DXT3_SRGB_BLOCK16:
+    case gli::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
+    case gli::FORMAT_RGBA_DXT5_SRGB_BLOCK16:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static gli::texture decode_dxt(const gli::texture& texture)
+{
+    constexpr auto rgba8 = gli::FORMAT_RGBA8_UNORM_PACK8;
+    switch (texture.target())
+    {
+    case gli::TARGET_2D: return gli::convert(gli::texture2d(texture), rgba8);
+    case gli::TARGET_CUBE: return gli::convert(gli::texture_cube(texture), rgba8);
+    default: return texture; // the stock data has no DXT volume or array textures
+    }
+}
+#endif
+
 void fix_texture_name(pstr fn)
 {
     pstr _ext = strext(fn);
@@ -110,10 +144,14 @@ GLuint CRender::texture_load(pcstr fRName, u32& ret_msize, GLenum& ret_desc, u32
 #endif // DEBUG
     gli::texture texture = gli::load((char*)S->pointer(), img_size);
     R_ASSERT2(!texture.empty(), fn);
+#ifdef XR_GLES
+    if (!HW.S3TCSupported && is_dxt(texture.format()))
+        texture = decode_dxt(texture);
+#endif
 
     u32 mip_cnt = u32(-1); // XXX: write to it when reading with GLI!
 
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     gli::gl GL(gli::gl::PROFILE_ES30);
 #else
     gli::gl GL(gli::gl::PROFILE_GL33);
@@ -130,7 +168,7 @@ GLuint CRender::texture_load(pcstr fRName, u32& ret_msize, GLenum& ret_desc, u32
     glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, 0);
     glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(texture.levels() - 1));
 
-#ifdef XR_PLATFORM_WEB
+#ifdef XR_GLES
     const bool swapRedBlue = !gli::is_compressed(texture.format()) && gli::block_size(texture.format()) == 4
         && format.Swizzles[gli::SWIZZLE_RED] == GL_BLUE;
     xr_vector<u8> reordered;
@@ -164,7 +202,8 @@ GLuint CRender::texture_load(pcstr fRName, u32& ret_msize, GLenum& ret_desc, u32
         if (err != GL_NO_ERROR)
         {
             VERIFY(err == GL_NO_ERROR);
-            Msg("! OpenGL: 0x%x: Invalid 2D texture: '%s'", err, fn);
+            Msg("! OpenGL: 0x%x: Invalid 2D texture: '%s' (gli format %d, internal 0x%x, %dx%d, %zu levels)", err, fn,
+                int(texture.format()), format.Internal, tex_extent.x, tex_extent.y, size_t(texture.levels()));
         }
         break;
     case gli::TARGET_3D:
