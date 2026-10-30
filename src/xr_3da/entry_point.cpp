@@ -11,6 +11,10 @@
 #include <getopt.h>
 #endif
 
+#if defined(XR_PLATFORM_ANDROID) || defined(XR_PLATFORM_IOS)
+#include <SDL_main.h> // renames main() to SDL_main(), which the platform glue calls
+#endif
+
 // Always request high performance GPU
 extern "C"
 {

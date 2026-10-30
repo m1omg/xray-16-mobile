@@ -455,6 +455,7 @@ target_include_directories(xrCore
 target_link_libraries(xrCore
     PUBLIC
     $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
+    $<$<PLATFORM_ID:Android>:log>
     $<$<PLATFORM_ID:FreeBSD,OpenBSD,NetBSD,DragonFlyBSD>:execinfo>
     SDL2::SDL2
 

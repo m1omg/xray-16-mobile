@@ -99,11 +99,21 @@ inline void _splitpath(const char* path, // Path Input
         strcpy(ext, end);
 }
 
+#if defined(XR_PLATFORM_ANDROID)
+#include <android/log.h>
+inline void OutputDebugString(const char *str) // stderr goes nowhere on Android, use logcat
+{
+    if (str[0] == '\n' && str[1] == '\0')
+        return; // AddOne() emits the line terminator separately; logcat entries are lines already
+    __android_log_write(ANDROID_LOG_INFO, "xray", str);
+}
+#else
 #include <iostream>
 inline void OutputDebugString(const char *str) // for linux debugger
 {
     std::cerr << str;
 }
+#endif
 
 inline unsigned long GetLastError()
 {

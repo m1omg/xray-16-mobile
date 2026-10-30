@@ -31,7 +31,13 @@ void* ModuleHandle::Open(pcstr moduleName)
 
     Log("Loading module:", moduleName);
 
+#ifdef XR_PLATFORM_ANDROID
+    // Android packages native libraries as lib<name>.so (see the top-level CMakeLists.txt)
+    xr_string buf("lib");
+    buf += moduleName;
+#else
     xr_string buf(moduleName);
+#endif
 #ifdef XR_PLATFORM_WINDOWS
     buf += ".dll";
 #elif defined(XR_PLATFORM_APPLE)

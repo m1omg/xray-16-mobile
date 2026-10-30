@@ -17,6 +17,12 @@
 #           define CXXABI_AVAILABLE
 #       endif
 #   endif
+#elif defined(XR_PLATFORM_ANDROID)
+// Bionic only has backtrace() from API 33, so walk the stack with the unwinder directly
+#   include <unwind.h>
+#   include <cxxabi.h>
+#   include <dlfcn.h>
+#   define UNWIND_AVAILABLE
 #endif
 
 #ifdef XR_PLATFORM_WINDOWS
@@ -296,6 +302,72 @@ xr_vector<xr_string> BuildStackTrace(u16 maxFramesCount)
         }
         ::free(demangledName);
     }
+
+    return result;
+}
+#elif defined(UNWIND_AVAILABLE)
+namespace
+{
+struct unwind_state
+{
+    uintptr_t* frames;
+    u16 count;
+    u16 capacity;
+};
+
+_Unwind_Reason_Code collect_frame(_Unwind_Context* context, void* arg)
+{
+    auto* state = static_cast<unwind_state*>(arg);
+    const uintptr_t pc = _Unwind_GetIP(context);
+    if (pc)
+    {
+        if (state->count == state->capacity)
+            return _URC_END_OF_STACK;
+        state->frames[state->count++] = pc;
+    }
+    return _URC_NO_REASON;
+}
+} // namespace
+
+xr_vector<xr_string> BuildStackTrace(u16 maxFramesCount)
+{
+    xr_vector<xr_string> result;
+
+    auto* frames = static_cast<uintptr_t*>(xr_alloca(sizeof(uintptr_t) * maxFramesCount));
+    unwind_state state{ frames, 0, maxFramesCount };
+    _Unwind_Backtrace(collect_frame, &state);
+
+    size_t demangledBufSize = 0;
+    char* demangledName = nullptr;
+    for (u16 i = 1; i < state.count; i++) // skip this function
+    {
+        string1024 line;
+        Dl_info info{};
+        if (dladdr(reinterpret_cast<void*>(frames[i]), &info) && info.dli_fname)
+        {
+            pcstr module = strrchr(info.dli_fname, '/');
+            module = module ? module + 1 : info.dli_fname;
+            pcstr function = info.dli_sname;
+            if (function)
+            {
+                int status = -1;
+                demangledName = abi::__cxa_demangle(function, demangledName, &demangledBufSize, &status);
+                if (status == 0)
+                    function = demangledName;
+                xr_sprintf(line, "%s(%s+0x%zx)", module, function,
+                    size_t(frames[i] - reinterpret_cast<uintptr_t>(info.dli_saddr)));
+            }
+            else
+            {
+                xr_sprintf(line, "%s(+0x%zx)", module,
+                    size_t(frames[i] - reinterpret_cast<uintptr_t>(info.dli_fbase)));
+            }
+        }
+        else
+            xr_sprintf(line, "[0x%zx]", size_t(frames[i]));
+        result.emplace_back(line);
+    }
+    ::free(demangledName);
 
     return result;
 }

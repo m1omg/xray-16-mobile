@@ -29,3 +29,27 @@ add_subdirectory(Externals)
 add_subdirectory(src)
 add_subdirectory(res)
 add_subdirectory(misc)
+
+# Android only installs and System.loadLibrary()s native libraries named lib*.so,
+# but the engine (and some submodules) set PREFIX "" on their shared libraries.
+# Restore the prefix centrally so submodule CMake files stay untouched;
+# ModuleLookup adds the same prefix when it dlopen()s modules at runtime.
+if (ANDROID)
+    function(xray_collect_targets dir out)
+        get_property(targets DIRECTORY "${dir}" PROPERTY BUILDSYSTEM_TARGETS)
+        get_property(subdirs DIRECTORY "${dir}" PROPERTY SUBDIRECTORIES)
+        foreach (subdir IN LISTS subdirs)
+            xray_collect_targets("${subdir}" sub_targets)
+            list(APPEND targets ${sub_targets})
+        endforeach()
+        set(${out} ${targets} PARENT_SCOPE)
+    endfunction()
+
+    xray_collect_targets("${CMAKE_CURRENT_SOURCE_DIR}" xray_all_targets)
+    foreach (target IN LISTS xray_all_targets)
+        get_target_property(type ${target} TYPE)
+        if (type STREQUAL "SHARED_LIBRARY" OR type STREQUAL "MODULE_LIBRARY")
+            set_target_properties(${target} PROPERTIES PREFIX "lib")
+        endif()
+    endforeach()
+endif()

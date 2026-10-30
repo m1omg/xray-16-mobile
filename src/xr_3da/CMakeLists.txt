@@ -1,4 +1,10 @@
-add_executable(xr_3da)
+if (ANDROID)
+    # SDLActivity loads libmain.so and calls SDL_main (SDL_main.h renames main()).
+    add_library(xr_3da SHARED)
+    set_target_properties(xr_3da PROPERTIES OUTPUT_NAME main)
+else()
+    add_executable(xr_3da)
+endif()
 
 target_sources(xr_3da PRIVATE
     entry_point.cpp

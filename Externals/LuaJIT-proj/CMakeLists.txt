@@ -137,8 +137,27 @@ set(CCOPTIONS "${CCOPT};${XCFLAGS}")
 
 target_compile_options(xrLuaJIT PRIVATE ${CCOPTIONS})
 
+# When cross-compiling with a multi-target compiler (Android NDK clang, Apple clang for iOS)
+# the target is not implied by the compiler binary, so the probe has to be told about it.
+# Without this it reports the host architecture and buildvm emits a host-arch lj_vm.S.
+set(TESTARCH_TARGET_FLAGS)
+if (CMAKE_C_COMPILER_TARGET)
+    list(APPEND TESTARCH_TARGET_FLAGS "--target=${CMAKE_C_COMPILER_TARGET}")
+endif()
+if (CMAKE_SYSROOT)
+    list(APPEND TESTARCH_TARGET_FLAGS "--sysroot=${CMAKE_SYSROOT}")
+endif()
+if (APPLE AND CMAKE_OSX_ARCHITECTURES)
+    foreach (arch IN LISTS CMAKE_OSX_ARCHITECTURES)
+        list(APPEND TESTARCH_TARGET_FLAGS -arch ${arch})
+    endforeach()
+    if (CMAKE_OSX_SYSROOT)
+        list(APPEND TESTARCH_TARGET_FLAGS -isysroot ${CMAKE_OSX_SYSROOT})
+    endif()
+endif()
+
 execute_process(
-    COMMAND ${CMAKE_C_COMPILER} ${CCOPTIONS} -E lj_arch.h -dM
+    COMMAND ${CMAKE_C_COMPILER} ${TESTARCH_TARGET_FLAGS} ${CCOPTIONS} -E lj_arch.h -dM
     WORKING_DIRECTORY "${LUAJIT_DIR}"
     OUTPUT_VARIABLE TESTARCH_OUTPUT
     ERROR_VARIABLE TESTARCH_ERROR
