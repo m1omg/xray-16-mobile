@@ -1,4 +1,4 @@
-# Shared environment for the Android build scripts. Source it, don't run it.
+# Shared environment for the Android and iOS build scripts. Source it, don't run it.
 # MOBILE_DIR: this port's tooling (mobile/ in the engine repo)
 # ENGINE_DIR: the OpenXRay checkout it lives in
 # WS: work dir for toolchains, dependency sources, build trees and logs; kept outside the
@@ -10,13 +10,13 @@ export MOBILE_DIR ENGINE_DIR WS
 export ANDROID_HOME="$WS/toolchain/sdk"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.16248370"
-export JAVA_HOME="$(ls -d "$WS"/toolchain/jdk-21* | head -1)"
+export JAVA_HOME="$(ls -d "$WS"/toolchain/jdk-21* 2>/dev/null | head -1)"
 export PATH="$ANDROID_HOME/cmake/3.31.6/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH"
 
 # minSdk 26 (Android 8.0): AAudio, GLES 3.2 on all real devices of that era, SDL2 baseline.
 export ANDROID_API=26
 export NDK_TOOLCHAIN="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-export JOBS="${JOBS:-$(nproc)}"
+export JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN)}"
 
 # Common CMake args for every cross-compiled target. $1 = ABI, $2 = install prefix.
 android_cmake_args() {
@@ -36,3 +36,22 @@ android_cmake_args() {
 export ANDROID_USER_HOME="$WS/toolchain/android-user"
 export ANDROID_AVD_HOME="$WS/toolchain/avd"
 export ANDROID_EMULATOR_HOME="$ANDROID_USER_HOME"
+
+# iOS: arm64 devices only. 15.0 still runs on the iPhone 6s / SE (1st gen) and gives
+# libc++ std::filesystem.
+export IOS_DEPLOYMENT_TARGET="${IOS_DEPLOYMENT_TARGET:-15.0}"
+
+# Common CMake args for every iOS target. $1 = install prefix.
+# Homebrew is ignored so macOS libraries on the build machine can't leak into the iOS link.
+ios_cmake_args() {
+    echo -G Ninja \
+        -DCMAKE_SYSTEM_NAME=iOS \
+        -DCMAKE_OSX_ARCHITECTURES=arm64 \
+        -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET="$IOS_DEPLOYMENT_TARGET" \
+        -DCMAKE_BUILD_TYPE="${BUILD_TYPE:-Release}" \
+        -DCMAKE_INSTALL_PREFIX="$1" \
+        -DCMAKE_PREFIX_PATH="$1" \
+        -DCMAKE_FIND_ROOT_PATH="$1" \
+        -DCMAKE_IGNORE_PREFIX_PATH="/opt/homebrew;/usr/local"
+}

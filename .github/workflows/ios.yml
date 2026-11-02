@@ -1,0 +1,93 @@
+name: iOS
+
+# Manual only: macOS runner minutes are expensive on private repos.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: iOS arm64 (static, unsigned .ipa)
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      IOS_BUILD_NUMBER: ${{ github.run_number }}
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Tools
+        run: |
+          echo "XRAY_MOBILE_WORK=$RUNNER_TEMP/ws" >> "$GITHUB_ENV"
+          echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=2G" >> "$GITHUB_ENV"
+          echo "CCACHE_SLOPPINESS=pch_defines,time_macros,include_file_mtime,include_file_ctime" >> "$GITHUB_ENV"
+          python3 -m venv "$RUNNER_TEMP/tools"
+          "$RUNNER_TEMP/tools/bin/pip" install --quiet cmake==3.31.6 ninja
+          echo "$RUNNER_TEMP/tools/bin" >> "$GITHUB_PATH"
+          brew install ccache
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+
+      # Saved explicitly (not in a post step) so a failed engine build still keeps them.
+      - name: Restore dependencies
+        id: deps
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ws/prefix/ios-arm64
+          key: ios-deps-${{ hashFiles('mobile/scripts/fetch-deps.sh', 'mobile/scripts/build-deps-ios.sh', 'mobile/scripts/env.sh', 'mobile/cmake/theora/**') }}
+
+      - name: Build dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: mobile/scripts/fetch-deps.sh && mobile/scripts/build-deps-ios.sh
+
+      - name: Save dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ws/prefix/ios-arm64
+          key: ${{ steps.deps.outputs.cache-primary-key }}
+
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ios-ccache-${{ github.run_id }}
+          restore-keys: ios-ccache-
+
+      - name: Build engine
+        run: |
+          ccache --zero-stats
+          mobile/scripts/build-engine-ios.sh
+          ccache --show-stats
+
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ios-ccache-${{ github.run_id }}
+
+      - name: Package
+        run: mobile/scripts/package-ios.sh "$RUNNER_TEMP/out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: X-Ray-SoC-ios-${{ github.run_number }}
+          path: ${{ runner.temp }}/out/X-Ray-SoC.ipa
+          compression-level: 0 # an .ipa is already a zip
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-logs-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/ws/logs
+            ${{ runner.temp }}/ws/build/deps/ios-arm64/*.log

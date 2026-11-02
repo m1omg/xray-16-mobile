@@ -5,5 +5,6 @@
 # ShoC-style [weathers]/[weather_effects] tables from system.ltx.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+mkdir -p "$WS/data"
 sed -E 's#(\$game_config\$ .*\$game_data\$\| *)configs\\#\1config\\#' \
     "$ENGINE_DIR/res/fsgame.ltx" > "$WS/data/fsgame-soc.ltx"
