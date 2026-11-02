@@ -2,6 +2,7 @@
 #pragma hdrstop
 
 #include "xr_input.h"
+#include "xr_input_touch.h"
 #include "IInputReceiver.h"
 #include "GameFont.h"
 #include "XR_IOConsole.h"
@@ -74,6 +75,9 @@ CInput::CInput(const bool exclusive)
     iCapture(&dummyController);
 
     SDL_SetHint(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, "1"); // We need to handle it manually
+#ifdef XR_PLATFORM_ANDROID
+    SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1"); // back is Escape, not "quit the app"
+#endif
 
     Device.seqAppActivate.Add(this);
     Device.seqAppDeactivate.Add(this, REG_PRIORITY_HIGH);
@@ -94,6 +98,8 @@ CInput::CInput(const bool exclusive)
 
     for (int i = 0; i < SDL_NumJoysticks(); ++i)
         OpenController(i);
+
+    touch = xr_new<TouchControls>(*this);
 }
 
 CInput::~CInput()
@@ -101,6 +107,8 @@ CInput::~CInput()
     ZoneScoped;
 
     GrabInput(false);
+
+    xr_delete(touch);
 
     for (auto& controller : controllers)
         SDL_GameControllerClose(controller);
@@ -142,6 +150,7 @@ void CInput::DumpStatistics(IGameFont& font, IPerformanceAlert* alert)
 void CInput::SetCurrentInputType(InputType type)
 {
     currentInputType = type;
+    touch->OnOtherInput();
 
     switch (type)
     {
@@ -207,6 +216,8 @@ void CInput::MouseUpdate()
 
         case SDL_MOUSEBUTTONDOWN:
         {
+            if (event.button.which != SDL_TOUCH_MOUSEID)
+                touch->OnOtherInput();
             const auto idx = RemapIdx[event.button.button - 1];
             mouseState[idx] = true;
             cbStack.back()->IR_OnMousePress(IdxToKey[idx]);
@@ -253,6 +264,20 @@ void CInput::KeyUpdate()
     const auto count = SDL_PeepEvents(events, MAX_KEYBOARD_EVENTS,
         SDL_GETEVENT, SDL_KEYDOWN, SDL_KEYMAPCHANGED);
 
+    int systemKeys = 0; // keys of the device itself, which don't mean a keyboard is in use
+#ifdef XR_PLATFORM_ANDROID
+    // The system back button/gesture does what Escape does on a PC: menu, close, skip
+    for (int i = 0; i < count; ++i)
+    {
+        if ((events[i].type == SDL_KEYDOWN || events[i].type == SDL_KEYUP)
+            && events[i].key.keysym.scancode == SDL_SCANCODE_AC_BACK)
+        {
+            events[i].key.keysym.scancode = SDL_SCANCODE_ESCAPE;
+            ++systemKeys;
+        }
+    }
+#endif
+
     // Let iGetAsyncKeyState work correctly during this frame immediately
     for (int i = 0; i < count; ++i)
     {
@@ -280,7 +305,7 @@ void CInput::KeyUpdate()
         return;
     }
 
-    if (count)
+    if (count > systemKeys)
         SetCurrentInputType(KeyboardMouse);
 
     // If textInputCounter has changed,
@@ -609,6 +634,11 @@ bool CInput::iGetAsyncMousePos(Ivector2& p, bool global /*= false*/) const
     return !global;
 }
 
+bool CInput::GetTouchPointer(Fvector2& pos) const
+{
+    return touch && touch->GetPointer(pos);
+}
+
 bool CInput::iSetMousePos(const Ivector2& p, bool global /*= false*/) const
 {
     if (global)
@@ -740,6 +770,7 @@ void CInput::iRelease(IInputReceiver* p)
 
 void CInput::OnAppActivate(void)
 {
+    touch->Reset();
     if (CurrentIR())
         CurrentIR()->IR_OnActivate();
 
@@ -750,6 +781,7 @@ void CInput::OnAppActivate(void)
 
 void CInput::OnAppDeactivate(void)
 {
+    touch->Reset();
     if (CurrentIR())
         CurrentIR()->IR_OnDeactivate();
 
@@ -770,9 +802,11 @@ void CInput::OnFrame(void)
 
     if (Device.dwPrecacheFrame == 0 && !Device.IsAnselActive)
     {
+        touch->Update();
         ControllerUpdate();
         KeyUpdate();
         MouseUpdate();
+        touch->Draw();
     }
 
     stats.FrameTime.End();

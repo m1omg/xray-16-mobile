@@ -370,7 +370,12 @@ bool CUIMMShniaga::OnMouseAction(float x, float y, EUIMessages mouse_action)
     Fvector2 pos = UI().GetUICursor().GetCursorPosition();
     Frect r;
     m_magnifier->GetAbsoluteRect(r);
-    if (WINDOW_LBUTTON_DOWN == mouse_action && r.in(pos.x, pos.y))
+    // A tap on a touch screen focuses a button and presses it at once, before the magnifier
+    // has slid over (a mouse gets it there while hovering), so the button itself counts too
+    Frect selected{};
+    if (m_selected)
+        m_selected->GetAbsoluteRect(selected);
+    if (WINDOW_LBUTTON_DOWN == mouse_action && (r.in(pos.x, pos.y) || (m_selected && selected.in(pos.x, pos.y))))
     {
         OnBtnClick();
     }

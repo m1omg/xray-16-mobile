@@ -266,6 +266,8 @@ target_sources_grouped(
     IInputReceiver.h
     xr_input.cpp
     xr_input.h
+    xr_input_touch.cpp
+    xr_input_touch.h
 )
 
 target_sources_grouped(

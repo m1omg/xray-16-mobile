@@ -18,8 +18,8 @@ public:
     CUICursor();
     ~CUICursor() override;
 
-    void Show() { bVisible = true; }
-    void Hide() { bVisible = false; }
+    void Show();
+    void Hide();
 
     [[nodiscard]]
     bool IsVisible() const { return bVisible; }

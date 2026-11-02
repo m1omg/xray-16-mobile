@@ -143,12 +143,15 @@ struct ENGINE_API ControllerState
 };
 
 class ENGINE_API IInputReceiver;
+class TouchControls;
 
 class ENGINE_API CInput
     : public pureFrame,
       public pureAppActivate,
       public pureAppDeactivate
 {
+    friend class TouchControls;
+
 public:
     enum FeedbackType
     {
@@ -209,6 +212,9 @@ private:
     SDL_Cursor* mouseCursors[SDL_NUM_SYSTEM_CURSORS]{};
     SDL_Cursor* lastCursor{};
 
+    TouchControls* touch{};
+    bool uiCursorVisible{};
+
 public:
     const InputStatistics& GetStats() const { return stats; }
     void DumpStatistics(class IGameFont& font, class IPerformanceAlert* alert);
@@ -231,6 +237,11 @@ public:
 
     void ShowCursor(const bool show);
     void SetCursor(const SDL_SystemCursor cursor);
+
+    // The game's own UI cursor (not the system one): touches point with it while it's shown
+    void SetUICursorVisible(const bool visible) { uiCursorVisible = visible; }
+    // Where a finger has put the UI cursor, 0..1 window coordinates
+    bool GetTouchPointer(Fvector2& pos) const;
 
     void EnableTextInput();
     void DisableTextInput();

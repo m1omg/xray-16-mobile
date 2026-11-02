@@ -7,6 +7,7 @@
 #include "CameraManager.h"
 #include "Environment.h"
 #include "xr_input.h"
+#include "xr_input_touch.h"
 #include "CustomHUD.h"
 
 #include "xr_object.h"
@@ -828,6 +829,11 @@ void CCC_Register()
     CMD3(CCC_Mask, "mouse_invert", &psMouseInvert, 1);
     psMouseSens = 0.12f;
     CMD4(CCC_Float, "mouse_sens", &psMouseSens, 0.001f, 0.6f);
+
+    // Touch screen
+    CMD4(CCC_Integer, "touch_controls", &psTouchControls, 0, 1);
+    CMD4(CCC_Float, "touch_look_sens", &psTouchLookSens, 0.1f, 5.f);
+    CMD4(CCC_Float, "touch_opacity", &psTouchOpacity, 0.f, 1.f);
 
     // Gamepad
     CMD3(CCC_Mask, "gamepad_invert_x", &psControllerFlags, ControllerInvertX);

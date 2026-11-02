@@ -96,10 +96,29 @@ void CUICursor::SetUICursorPosition(Fvector2 pos)
     std::ignore = pInput->iSetMousePos(p);
 }
 
+void CUICursor::Show()
+{
+    bVisible = true;
+    if (pInput)
+        pInput->SetUICursorVisible(true);
+}
+
+void CUICursor::Hide()
+{
+    bVisible = false;
+    if (pInput)
+        pInput->SetUICursorVisible(false);
+}
+
 void CUICursor::UpdateCursorPosition(Fvector2 pos)
 {
     vPrevPos = vPos;
-    if (pInput->IsExclusiveMode() || !m_bound_to_system_cursor)
+    if (Fvector2 touch; pInput->GetTouchPointer(touch))
+    {
+        // Touch screens point at things directly
+        vPos.set(touch.x * UI_BASE_WIDTH, touch.y * UI_BASE_HEIGHT);
+    }
+    else if (pInput->IsExclusiveMode() || !m_bound_to_system_cursor)
     {
         constexpr float sens = 1.0f;
         vPos.x += pos.x * sens * correction.x;
