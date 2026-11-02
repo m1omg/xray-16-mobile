@@ -161,6 +161,10 @@ GLuint CRender::texture_load(pcstr fRName, u32& ret_msize, GLenum& ret_desc, u32
     GLenum target = GL.translate(texture.target());
 
 
+    // Errors from earlier calls would otherwise be blamed on this texture below
+    if (const GLenum pending = glGetError(); pending != GL_NO_ERROR)
+        Msg("! OpenGL: 0x%x pending from an earlier call (before loading '%s')", pending, fn);
+
     const texture_upload_unit uploadUnit(target);
     glGenTextures(1, &pTexture);
     glBindTexture(target, pTexture);

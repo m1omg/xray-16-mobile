@@ -70,6 +70,8 @@ public:
     bool S3TCSupported{}; // DXT1/3/5 sampling; Mali GPUs and some iOS devices lack it
 #endif
 
+    bool ErrorChecks{}; // -gl_debug: CHK_GL logs GL errors in release builds too
+
     pcstr AdapterName;
     pcstr OpenGLVersionString;
     pcstr ShadingVersion;
@@ -92,3 +94,20 @@ struct texture_upload_unit
 
 extern ECORE_API CHW HW;
 } // namespace xray::render::RENDER_NAMESPACE
+
+#ifndef DEBUG
+// Release builds normally skip GL error checks. With -gl_debug they log the failing call,
+// which is how errors get pinned down on drivers without KHR_debug (e.g. the Android emulator).
+#undef CHK_GL
+#define CHK_GL(expr)\
+    do\
+    {\
+        expr;\
+        if (::xray::render::RENDER_NAMESPACE::HW.ErrorChecks)\
+        {\
+            const GLenum err_ = glGetError();\
+            if (err_ != GL_NO_ERROR)\
+                Msg("! OpenGL error 0x%x: %s [%s:%d]", err_, #expr, __FILE__, __LINE__);\
+        }\
+    } while (false)
+#endif

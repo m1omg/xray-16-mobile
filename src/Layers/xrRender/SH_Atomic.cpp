@@ -6,6 +6,20 @@
 
 namespace xray::render::RENDER_NAMESPACE
 {
+#if defined(USE_OGL)
+// "null" stages keep 0, which the Android emulator's GLES rejects with GL_INVALID_VALUE
+// although the spec says deleting 0 is ignored
+static void DeleteGLShader(GLuint sh)
+{
+    if (!sh)
+        return;
+    if (GLAD_GL_ARB_separate_shader_objects)
+        CHK_GL(glDeleteProgram(sh));
+    else
+        CHK_GL(glDeleteShader(sh));
+}
+#endif
+
 // Atomic
 //SVS::~SVS()
 //{
@@ -49,10 +63,7 @@ SVS::~SVS()
 #if defined(USE_DX11)
     _RELEASE(sh);
 #elif defined(USE_OGL)
-    if (GLAD_GL_ARB_separate_shader_objects)
-        CHK_GL(glDeleteProgram(sh));
-    else
-        CHK_GL(glDeleteShader(sh));
+    DeleteGLShader(sh);
 #else
 #   error No graphics API selected or enabled!
 #endif
@@ -65,10 +76,7 @@ SPS::~SPS()
 #if defined(USE_DX11)
     _RELEASE(sh);
 #elif defined(USE_OGL)
-    if (GLAD_GL_ARB_separate_shader_objects)
-        CHK_GL(glDeleteProgram(sh));
-    else
-        CHK_GL(glDeleteShader(sh));
+    DeleteGLShader(sh);
 #else
 #   error No graphics API selected or enabled!
 #endif
@@ -83,10 +91,7 @@ SGS::~SGS()
 #   if defined(USE_DX11)
     _RELEASE(sh);
 #   elif defined(USE_OGL)
-    if (GLAD_GL_ARB_separate_shader_objects)
-        CHK_GL(glDeleteProgram(sh));
-    else
-        CHK_GL(glDeleteShader(sh));
+    DeleteGLShader(sh);
 #   else
 #       error No graphics API selected or enabled!
 #   endif
@@ -99,10 +104,7 @@ SHS::~SHS()
 #   if defined(USE_DX11)
     _RELEASE(sh);
 #   elif defined(USE_OGL)
-    if (GLAD_GL_ARB_separate_shader_objects)
-        CHK_GL(glDeleteProgram(sh));
-    else
-        CHK_GL(glDeleteShader(sh));
+    DeleteGLShader(sh);
 #   else
 #       error No graphics API selected or enabled!
 #   endif
@@ -115,10 +117,7 @@ SDS::~SDS()
 #   if defined(USE_DX11)
     _RELEASE(sh);
 #   elif defined(USE_OGL)
-    if (GLAD_GL_ARB_separate_shader_objects)
-        CHK_GL(glDeleteProgram(sh));
-    else
-        CHK_GL(glDeleteShader(sh));
+    DeleteGLShader(sh);
 #   endif
 
     RImplementation.Resources->_DeleteDS(this);
@@ -129,10 +128,7 @@ SCS::~SCS()
 #    if defined(USE_DX11)
     _RELEASE(sh);
 #    elif defined(USE_OGL)
-    if (GLAD_GL_ARB_separate_shader_objects)
-        CHK_GL(glDeleteProgram(sh));
-    else
-        CHK_GL(glDeleteShader(sh));
+    DeleteGLShader(sh);
 #   else
 #       error No graphics API selected or enabled!
 #   endif

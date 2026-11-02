@@ -186,12 +186,28 @@ void CHW::CreateDevice(SDL_Window* hWnd)
         UpdateVSync();
 
 #ifdef DEBUG
-        if (glDebugMessageCallback)
+        constexpr bool debugOutput = true;
+#else
+        // Driver messages in release builds too: the only way to see GL errors on players' devices
+        const bool debugOutput = strstr(Core.Params, "-gl_debug") != nullptr;
+        ErrorChecks = debugOutput;
+#endif
+        if (debugOutput && glDebugMessageCallback)
         {
             CHK_GL(glEnable(GL_DEBUG_OUTPUT));
+            CHK_GL(glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS)); // report from inside the failing call
             CHK_GL(glDebugMessageCallback((GLDEBUGPROC)OnDebugCallback, nullptr));
         }
-#endif // DEBUG
+#ifdef XR_GLES
+        else if (debugOutput && glDebugMessageCallbackKHR) // GLES 3.0/3.1 with KHR_debug
+        {
+            CHK_GL(glEnable(GL_DEBUG_OUTPUT_KHR));
+            CHK_GL(glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR));
+            CHK_GL(glDebugMessageCallbackKHR((GLDEBUGPROCKHR)OnDebugCallback, nullptr));
+        }
+#endif
+        else if (debugOutput)
+            Log("! OpenGL: no debug output on this driver");
     }
 
     int iMaxVTFUnits, iMaxCTIUnits;
