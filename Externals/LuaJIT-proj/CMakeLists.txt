@@ -152,7 +152,20 @@ if (APPLE AND CMAKE_OSX_ARCHITECTURES)
         list(APPEND TESTARCH_TARGET_FLAGS -arch ${arch})
     endforeach()
     if (CMAKE_OSX_SYSROOT)
-        list(APPEND TESTARCH_TARGET_FLAGS -isysroot ${CMAKE_OSX_SYSROOT})
+        # May be an SDK name ("iphoneos") rather than a path
+        set(TESTARCH_SYSROOT "${CMAKE_OSX_SYSROOT}")
+        if (NOT IS_ABSOLUTE "${TESTARCH_SYSROOT}")
+            execute_process(
+                COMMAND xcrun --sdk ${TESTARCH_SYSROOT} --show-sdk-path
+                OUTPUT_VARIABLE TESTARCH_SYSROOT
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+        endif()
+        list(APPEND TESTARCH_TARGET_FLAGS -isysroot ${TESTARCH_SYSROOT})
+    endif()
+    # Without it clang assumes macOS, the probe misses LJ_TARGET_IOS and keeps the JIT enabled
+    if (CMAKE_SYSTEM_NAME STREQUAL "iOS" AND CMAKE_OSX_DEPLOYMENT_TARGET)
+        list(APPEND TESTARCH_TARGET_FLAGS -mios-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     endif()
 endif()
 
