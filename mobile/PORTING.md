@@ -28,7 +28,7 @@ Game install (data source + RE target): `../S.T.A.L.K.E.R. Shadow of Chernobyl/`
 5. **Mobile UX**: touch controls overlay, UI scale, DXT texture fallback (CPU decode / ETC2-ASTC
    transcode where `GL_EXT_texture_compression_s3tc` is missing, e.g. Mali), perf (R1-class
    settings), lifecycle (pause/resume, GL context loss).
-6. **iOS**: same CMake tree, SDL2 UIKit backend, LuaJIT interpreter-only (no JIT on iOS),
+5. **iOS**: same CMake tree, SDL2 UIKit backend, LuaJIT interpreter-only (no JIT on iOS),
    GLES 3.0 via EAGL first, ANGLE-Metal later. **Requires macOS + Xcode** (or a GitHub Actions macOS
    runner) to build, and an Apple ID to sign/sideload (AltStore/SideStore, or EU alt marketplace).
 
@@ -70,7 +70,8 @@ Game install (data source + RE target): `../S.T.A.L.K.E.R. Shadow of Chernobyl/`
   `release/xray-soc-0.2-touch-arm64.apk` (local) for the S24 / Pad 5.
 - 2026-11-02: first iOS IPA from CI (run 3: arm64, iOS 15+, system frameworks only, 19.7 MB).
 - 2026-11-02: fixed a fatal assert a few minutes into Cordon (dogs playing CoP-only idles); survives a
-  10-minute soak now. Android launcher is an import screen (system folder picker → copies
+  10-minute soak now. The stale `GL_INVALID_VALUE` was glDeleteShader(0) for "null" stages
+  (found with the new `-gl_debug`); none left. Android launcher is an import screen (system folder picker → copies
   `gamedata.db*` with progress, resumable), tested end to end on the emulator.
 
 ## How to run (current)
@@ -108,10 +109,8 @@ Touch settings (console / `user.ltx`): `touch_controls 0|1`, `touch_look_sens`, 
 4. **SoC compat** (OpenXRay #392): CoP dog animations the SoC model lacks (`stand_drage_` etc.; the
    fatal one is fixed, the rest only log), missing intro sounds
    `characters_voice\scenario\video\*`, tutorial `game_loaded` missing, "Version conflict in shader".
-5. Stale `GL_INVALID_VALUE` attributed to the first texture (`intro\intro_back.dds`, 4×4) —
-   real source is an earlier GL call; find with KHR_debug.
 6. Real-device testing (S24, Pad 5): performance, GLES 3.2 base-vertex path, S3TC availability,
    lifecycle (pause/resume, context loss), touch layout on a 16:10 tablet.
-7. Touch polish: pinch-zoom / two-finger scroll for the PDA map and long lists, button layout editor,
+6. Touch polish: pinch-zoom / two-finger scroll for the PDA map and long lists, button layout editor,
    haptics, hiding controls during cutscenes.
-8. iOS: first device run (nobody has tested an IPA yet), GLES deprecation → ANGLE-Metal fallback.
+7. iOS: first device run (nobody has tested an IPA yet), GLES deprecation → ANGLE-Metal fallback.
