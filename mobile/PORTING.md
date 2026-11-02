@@ -28,7 +28,7 @@ Game install (data source + RE target): `../S.T.A.L.K.E.R. Shadow of Chernobyl/`
 5. **Mobile UX**: touch controls overlay, UI scale, DXT texture fallback (CPU decode / ETC2-ASTC
    transcode where `GL_EXT_texture_compression_s3tc` is missing, e.g. Mali), perf (R1-class
    settings), lifecycle (pause/resume, GL context loss).
-5. **iOS**: same CMake tree, SDL2 UIKit backend, LuaJIT interpreter-only (no JIT on iOS),
+6. **iOS**: same CMake tree, SDL2 UIKit backend, LuaJIT interpreter-only (no JIT on iOS),
    GLES 3.0 via EAGL first, ANGLE-Metal later. **Requires macOS + Xcode** (or a GitHub Actions macOS
    runner) to build, and an Apple ID to sign/sideload (AltStore/SideStore, or EU alt marketplace).
 
@@ -109,7 +109,7 @@ Touch settings (console / `user.ltx`): `touch_controls 0|1`, `touch_look_sens`, 
 4. **SoC compat** (OpenXRay #392): CoP dog animations the SoC model lacks (`stand_drage_` etc.; the
    fatal one is fixed, the rest only log), missing intro sounds
    `characters_voice\scenario\video\*`, tutorial `game_loaded` missing, "Version conflict in shader".
-6. Real-device testing (S24, Pad 5): performance, GLES 3.2 base-vertex path, S3TC availability,
+5. Real-device testing (S24, Pad 5): performance, GLES 3.2 base-vertex path, S3TC availability,
    lifecycle (pause/resume, context loss), touch layout on a 16:10 tablet.
 6. Touch polish: pinch-zoom / two-finger scroll for the PDA map and long lists, button layout editor,
    haptics, hiding controls during cutscenes.
