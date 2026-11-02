@@ -60,5 +60,8 @@ cp -r "$ENGINE_DIR/res/gamedata/shaders/gl" "$assets/gamedata/shaders/"
 "$MOBILE_DIR/scripts/make-fsgame-soc.sh"
 cp "$WS/data/fsgame-soc.ltx" "$assets/fsgame.ltx"
 
+# Debug packaging updates the previous APK in place and leaves the space of replaced
+# entries behind (217 MB for 83 MB of content); start from scratch instead.
+rm -rf "$MOBILE_DIR/android/app/build/outputs/apk" "$MOBILE_DIR/android/app/build/intermediates/apk"
 "$GRADLE" -p "$MOBILE_DIR/android" --no-daemon -q assembleDebug
 ls -la "$MOBILE_DIR"/android/app/build/outputs/apk/debug/*.apk
