@@ -59,32 +59,59 @@ Game install (data source + RE target): `../S.T.A.L.K.E.R. Shadow of Chernobyl/`
   Screenshots in `milestones/` (local only).
   Fixed on the way (engine branch `mobile`, 3 commits): see `git log` in `xray-16/`.
 
+- 2026-10-30: repo pushed to github.com/m1omg/xray-16-mobile (branch `mobile`); public since
+  2026-11-02 so macOS CI minutes are free. Upstream's CI workflows are disabled in the repo settings.
+- 2026-11-02: **iOS** build scripts + `ios.yml` workflow (manual dispatch, macos-15). Deps build
+  first time; engine needed: app-bundle target, UIKit framebuffer for Present(), `SDL_OpenURL`
+  instead of `system()`, LuaJIT probe targeting iOS (interpreter only).
+- 2026-11-02: **touch controls** (`xrEngine/xr_input_touch.*`), tested on the emulator: tap through
+  intros (tap = Escape when there is no cursor), tap-to-point menus, new game, skip cutscene,
+  floating move stick, swipe look, on-screen buttons, inventory open/close, Android back = Escape.
+  `release/xray-soc-0.2-touch-arm64.apk` (local) for the S24 / Pad 5.
+- 2026-11-02: first iOS IPA from CI (run 3: arm64, iOS 15+, system frameworks only, 19.7 MB).
+- 2026-11-02: fixed a fatal assert a few minutes into Cordon (dogs playing CoP-only idles); survives a
+  10-minute soak now. Android launcher is an import screen (system folder picker → copies
+  `gamedata.db*` with progress, resumable), tested end to end on the emulator.
+
 ## How to run (current)
 
-1. `scripts/build-deps-android.sh <abi>`, `scripts/build-engine-android.sh <abi>`,
-   `scripts/package-android.sh arm64-v8a x86_64` → `android/app/build/outputs/apk/debug/app-debug.apk`
-2. Install, launch once (creates `Android/data/org.xraymobile.soc/files/`, unpacks shaders + fsgame.ltx).
-3. Copy the game's `gamedata.db0`…`gamedata.dbd` into that folder (USB/MTP on a phone,
-   `scripts/push-gamedata.sh` for adb).
+Android:
+1. `scripts/fetch-deps.sh`, `scripts/build-deps-android.sh <abi>`, `scripts/build-engine-android.sh <abi>`,
+   `scripts/package-android.sh arm64-v8a [x86_64]` → `android/app/build/outputs/apk/debug/app-debug.apk`
+2. Install and launch. The first launch shows an import screen: pick the folder holding the game's
+   `gamedata.db0`…`gamedata.dbd` (phone storage, SD card, USB drive via the system picker) and the
+   app copies them into `Android/data/org.xraymobile.soc/files/` (resumable). Or push them with
+   `scripts/push-gamedata.sh` over adb.
 4. `EXTRA_ARGS="-start server(all/single/alife/new) client(localhost)" scripts/run-device.sh 120`
-   starts a new game directly (no touch controls yet).
+   starts a new game directly.
+
+iOS (macOS only, or the `iOS` workflow on GitHub Actions → artifact `X-Ray-SoC-ios-<n>`):
+1. `scripts/fetch-deps.sh && scripts/build-deps-ios.sh && scripts/build-engine-ios.sh && scripts/package-ios.sh`
+2. Sideload the unsigned `X-Ray-SoC.ipa` (AltStore/SideStore/Sideloadly with an Apple ID).
+3. Copy `gamedata.db*` into the app's folder in Files (On My iPhone → X-Ray SoC).
+   `Documents/commandline.txt` (one line) adds engine arguments.
+
+Touch settings (console / `user.ltx`): `touch_controls 0|1`, `touch_look_sens`, `touch_opacity`.
 
 ## Known issues / next steps
 
-1. **Touch controls** — none yet. Engine input is relative-mouse only, so taps don't move the
-   UI cursor. Needed: tap-to-point for menus/inventory/PDA, virtual sticks + buttons in-game.
-   A Bluetooth/USB gamepad or mouse+keyboard should work through SDL meanwhile (untested).
+1. **Unverified: empty inventory at the start.** In Sidorovich's bunker the backpack is empty (4.3 kg
+   counted) and slots 1/5 draw nothing ("Set slots blocked" in the log). Could be SoC's scripted start
+   (only knife/binoculars/bolts/PDA, all in persistent slots SoC's UI doesn't show; first pistol from
+   Wolf) or a bug — check outside the bunker. (`slots_count = 11, but real slots count is 10` is
+   harmless: SoC's system.ltx declares 11 slots and defines 10.)
 2. **4:3 UI stretched** to 20:9. Needs pillarboxed UI or SoC widescreen UI handling.
-3. **Texture memory**: DXT→RGBA8 fallback is active on the emulator (and will be on Mali);
-   bunker = 392 MB of textures. Plan: offline DXT→ASTC transcode into loose `gamedata/textures`.
-4. **SoC compat** (OpenXRay #392): dog animation names (`stand_drage_` etc.), inventory
-   `slots_count` 11 vs 10, missing intro sounds `characters_voice\scenario\video\*`,
-   tutorial `game_loaded` missing, "Version conflict in shader" warnings (shaders.xr).
+3. **Texture memory**: DXT→RGBA8 fallback is active on the emulator; bunker = 392 MB. Whether the
+   S24 (Xclipse 940) and Pad 5 (Adreno 640) sample DXT natively shows in the log
+   ("GLES DXT textures: native / decoded to RGBA8 on load"); iOS never does.
+   Plan: offline DXT→ASTC transcode into loose `gamedata/textures`.
+4. **SoC compat** (OpenXRay #392): CoP dog animations the SoC model lacks (`stand_drage_` etc.; the
+   fatal one is fixed, the rest only log), missing intro sounds
+   `characters_voice\scenario\video\*`, tutorial `game_loaded` missing, "Version conflict in shader".
 5. Stale `GL_INVALID_VALUE` attributed to the first texture (`intro\intro_back.dds`, 4×4) —
    real source is an earlier GL call; find with KHR_debug.
-6. Real-device testing (Samsung phone, Xiaomi tablet): performance, GLES 3.2 base-vertex path,
-   S3TC availability, lifecycle (pause/resume, context loss).
-7. Data import UX: folder picker (SAF) instead of manual copying.
-8. **iOS** via GitHub Actions (macOS runner): CMake iOS toolchain for deps + engine,
-   LuaJIT `LUAJIT_DISABLE_JIT`, static or embedded frameworks, SDL UIKit app; needs a GitHub repo
-   for the engine fork + this workspace (ask the user before creating/pushing).
+6. Real-device testing (S24, Pad 5): performance, GLES 3.2 base-vertex path, S3TC availability,
+   lifecycle (pause/resume, context loss), touch layout on a 16:10 tablet.
+7. Touch polish: pinch-zoom / two-finger scroll for the PDA map and long lists, button layout editor,
+   haptics, hiding controls during cutscenes.
+8. iOS: first device run (nobody has tested an IPA yet), GLES deprecation → ANGLE-Metal fallback.
