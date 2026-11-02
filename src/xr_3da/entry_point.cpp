@@ -15,6 +15,14 @@
 #include <SDL_main.h> // renames main() to SDL_main(), which the platform glue calls
 #endif
 
+#if defined(XR_PLATFORM_IOS)
+#include <SDL.h>
+#include <filesystem>
+#include <fstream>
+#include <sys/stat.h>
+#include <mach-o/dyld.h>
+#endif
+
 // Always request high performance GPU
 extern "C"
 {
@@ -46,6 +54,53 @@ struct tracy_raii
 #endif
     }
 };
+
+#if defined(XR_PLATFORM_IOS)
+// iOS apps get no command line and no user-visible install folder. The player copies their
+// gamedata.db* archives into the app's Documents folder (Files > On My iPhone/iPad), and the
+// GL shaders and fsgame.ltx that ship inside the app bundle are installed next to them.
+static std::string ios_prepare_documents()
+{
+    namespace fs = std::filesystem;
+
+    const char* home = getenv("HOME");
+    const fs::path documents = fs::path(home ? home : ".") / "Documents";
+    char* base = SDL_GetBasePath();
+    const fs::path bundle = base ? base : ".";
+    SDL_free(base);
+
+    // Reinstall the bundled resources whenever the app binary changes, i.e. after an update
+    std::string stamp = "unknown";
+    char exe[PATH_MAX];
+    uint32_t exeSize = sizeof(exe);
+    struct stat info{};
+    if (_NSGetExecutablePath(exe, &exeSize) == 0 && stat(exe, &info) == 0)
+        stamp = std::to_string(info.st_mtimespec.tv_sec) + "-" + std::to_string(info.st_size);
+
+    const fs::path stampFile = documents / ".engine-resources";
+    std::string installed;
+    std::ifstream(stampFile) >> installed;
+    std::error_code ec;
+    if (installed != stamp)
+    {
+        fs::copy(bundle / "gamedata", documents / "gamedata",
+            fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
+        if (ec)
+            SDL_Log("failed to install engine resources: %s", ec.message().c_str());
+        else
+            std::ofstream(stampFile) << stamp;
+    }
+    if (!fs::exists(documents / "fsgame.ltx", ec)) // keep user edits
+        fs::copy_file(bundle / "fsgame.ltx", documents / "fsgame.ltx", ec);
+
+    std::string commandLine = "-shoc -fsltx " + (documents / "fsgame.ltx").string();
+    // Extra engine arguments for testing, e.g. -start server(all/single/alife/new) client(localhost)
+    std::string extra;
+    if (std::getline(std::ifstream(documents / "commandline.txt"), extra) && !extra.empty())
+        commandLine += " " + extra;
+    return commandLine;
+}
+#endif
 
 int entry_point(pcstr commandLine)
 {
@@ -88,6 +143,12 @@ int main(int argc, char *argv[])
 
     try
     {
+#if defined(XR_PLATFORM_IOS)
+        SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+        SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, "2"); // keep it out of the way of edge swipes
+        const std::string iosCommandLine = ios_prepare_documents();
+        result = entry_point(iosCommandLine.c_str());
+#else
         char* commandLine = nullptr;
         int i;
         if(argc > 1)
@@ -111,6 +172,7 @@ int main(int argc, char *argv[])
         }
         else
             result = entry_point("");
+#endif
     }
     catch (const std::overflow_error& e)
     {

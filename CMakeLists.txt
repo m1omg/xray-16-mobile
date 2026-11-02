@@ -21,6 +21,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries"     ${BUILD_SHARED_LIBS_DEFAUL
 option(XRAY_USE_LUAJIT   "Use LuaJIT"                 ON)
 option(XRAY_USE_ASAN     "Use AddressSanitizer"       OFF)
 option(XRAY_ENABLE_TRACY "Enable tracy profiler"      OFF)
+option(XRAY_USE_LTO      "Use link-time optimization in release builds" ON)
 
 include(XRay.Build)
 include(XRay.Packaging)

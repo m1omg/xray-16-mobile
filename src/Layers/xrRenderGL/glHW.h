@@ -56,6 +56,7 @@ public:
     u32 CurrentBackBuffer{};
 
     GLuint pFB{};
+    GLuint DisplayFB{}; // what Present() blits to: 0 everywhere but iOS, where SDL owns an FBO
 
     SDL_Window* m_window{};
 

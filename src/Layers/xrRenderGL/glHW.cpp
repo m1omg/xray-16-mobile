@@ -7,6 +7,10 @@
 #include "glHW.h"
 #include "xrEngine/XR_IOConsole.h"
 
+#ifdef XR_PLATFORM_IOS
+#include <SDL_syswm.h>
+#endif
+
 namespace xray::render::RENDER_NAMESPACE
 {
 CHW HW;
@@ -153,6 +157,15 @@ void CHW::CreateDevice(SDL_Window* hWnd)
         || (GLAD_GL_EXT_texture_compression_dxt1 && GLAD_GL_ANGLE_texture_compression_dxt3
             && GLAD_GL_ANGLE_texture_compression_dxt5);
     Msg("* GLES DXT textures: %s", S3TCSupported ? "native" : "decoded to RGBA8 on load");
+#ifdef XR_PLATFORM_IOS
+    // UIKit has no window-system framebuffer: SDL renders into an FBO it presents itself
+    SDL_SysWMinfo info;
+    SDL_VERSION(&info.version);
+    if (SDL_GetWindowWMInfo(m_window, &info) && info.subsystem == SDL_SYSWM_UIKIT)
+        DisplayFB = info.info.uikit.framebuffer;
+    else
+        Log("! OpenGL: could not query the UIKit framebuffer:", SDL_GetError());
+#endif
 #else
     {
         ZoneScopedN("gladLoadGL");
@@ -331,7 +344,7 @@ void CHW::Present()
     RImplementation.Target->phase_flip();
 #else
     glBindFramebuffer(GL_READ_FRAMEBUFFER, pFB);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, DisplayFB);
     glBlitFramebuffer(
         0, 0, Device.dwWidth, Device.dwHeight,
         0, 0, Device.dwWidth, Device.dwHeight,

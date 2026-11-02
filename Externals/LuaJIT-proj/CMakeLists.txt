@@ -256,6 +256,10 @@ endif()
 
 if ("${TESTARCH_OUTPUT}" MATCHES "LJ_HASJIT 1")
     list(APPEND DASM_FLAGS "-D JIT")
+else()
+    # The target can't JIT (iOS forbids runtime code generation), but the host tools
+    # would assume they can and emit JIT-only VM parts unless told otherwise.
+    list(APPEND TARGET_ARCH "-DLUAJIT_DISABLE_JIT")
 endif()
 
 if ("${TESTARCH_OUTPUT}" MATCHES "LJ_HASFFI 1")

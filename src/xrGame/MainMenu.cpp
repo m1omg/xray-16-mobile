@@ -880,8 +880,7 @@ void CMainMenu::OnDownloadMPMap(CUIWindow* w, void* d)
     STRCONCAT(params, "/C start ", url);
     ShellExecute(0, "open", "cmd.exe", params, NULL, SW_SHOW);
 #else
-    std::string command = "xdg-open " + std::string{url};
-    std::ignore = system(command.c_str());
+    SDL_OpenURL(url); // system() is unavailable on iOS; SDL knows each platform's URL handler
 #endif
 }
 

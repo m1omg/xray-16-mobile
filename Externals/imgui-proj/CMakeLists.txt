@@ -30,10 +30,12 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" AND NOT CMAKE_SYSTEM_NAME STREQUAL 
     )
 endif()
 
-# On Android the GL3 backend switches to <GLES3/gl3.h> and calls GLES directly
+# On Android and iOS the GL3 backend switches to the system GLES 3 headers and calls GLES directly
 # rather than through its own loader, so it needs the system GLES library.
 if (ANDROID)
     target_link_libraries(xrImGui PRIVATE GLESv3)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(xrImGui PRIVATE "-framework OpenGLES")
 endif()
 
 target_compile_definitions(xrImGui
