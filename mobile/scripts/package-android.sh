@@ -26,6 +26,9 @@ fi
 
 printf "sdk.dir=%s\n" "$ANDROID_HOME" > "$MOBILE_DIR/android/local.properties"
 
+# Only the ABIs asked for this time, not leftovers from an earlier run
+rm -rf "$MOBILE_DIR/android/app/jniLibs"
+
 for abi in "${abis[@]}"; do
     case "$abi" in
         arm64-v8a) triple=aarch64-linux-android ;;
@@ -33,7 +36,7 @@ for abi in "${abis[@]}"; do
         *) echo "unsupported ABI $abi"; exit 1 ;;
     esac
     out="$MOBILE_DIR/android/app/jniLibs/$abi"
-    rm -rf "$out" && mkdir -p "$out"
+    mkdir -p "$out"
 
     variant=android-"$abi"; [[ "${STATIC:-0}" == 1 ]] && variant+=-static
     libs=("$ENGINE_DIR"/bin/"$variant"/"${BUILD_TYPE:-Release}"/lib*.so
