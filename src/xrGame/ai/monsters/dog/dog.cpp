@@ -275,9 +275,15 @@ void CAI_Dog::start_animation()
         return;
     }
 
+    IKinematicsAnimated* kinematics = smart_cast<IKinematicsAnimated*>(Visual());
+    const MotionID motion = kinematics->ID_Cycle_Safe(get_current_animation());
+    // The SoC dog model lacks most of these idles (shake, sit, howl...), which CoP added
+    if (!motion.valid())
+        return;
+
     b_state_anim = true;
     com_man().script_capture(ControlCom::eControlAnimation);
-    smart_cast<IKinematicsAnimated*>(Visual())->PlayCycle(get_current_animation(), TRUE, animation_end, this);
+    kinematics->PlayCycle(motion, TRUE, animation_end, this);
     b_state_end = true;
 }
 
